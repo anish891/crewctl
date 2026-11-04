@@ -393,3 +393,7 @@ You can easily extend the orchestrator with custom tools or third-party APIs. Fo
    tools:
      - mytool.my_method
    ```
+
+## Author
+
+Built by [Anish Tejwani](https://anishtejwani.dev).
