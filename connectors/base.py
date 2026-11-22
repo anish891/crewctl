@@ -155,6 +155,14 @@ def _make_tool(connector: BaseConnector, method_name: str, method: Callable) -> 
             except Exception as e:
                 logger.warning(f"RBAC check non-blocking error: {e}")
 
+            # ── Human-in-the-loop approval for high-risk tools ──────────────
+            try:
+                from security.guardrails import enforce_tool_guardrail
+                enforce_tool_guardrail(agent_role, tool_name, kwargs)
+            except PermissionError as pe:
+                connector.audit(method_name, kwargs, "hitl_denied", error=str(pe))
+                return f"Permission Denied: {pe}"
+
             # ── execute ─────────────────────────────────────────────────────
             try:
                 connector.authenticate()

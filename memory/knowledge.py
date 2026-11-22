@@ -12,6 +12,11 @@ from utils.logger import get_logger
 
 logger = get_logger("memory.knowledge")
 
+# Single vector-store namespace shared by `crewctl index` (writes) and the
+# `knowledge.search` tool (reads). Both sides must use the same id, otherwise
+# searches hit an empty collection.
+KNOWLEDGE_COLLECTION_ID = "global_rag"
+
 class KnowledgeMemory:
     """
     Knowledge Memory component.
