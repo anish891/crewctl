@@ -6,11 +6,16 @@ and Output Guardrails (Secret masking, PII redaction).
 """
 
 import re
+import threading
 
 from typing import Tuple, Dict, Any, Optional
 from utils.logger import get_logger
 
 logger = get_logger("security.guardrails")
+
+# Parallel tasks run in threads; serialise approval prompts so two agents
+# never ask the supervisor at the same time.
+_approval_lock = threading.Lock()
 
 # Common regex patterns for PII detection and redaction
 PII_PATTERNS = {
@@ -83,17 +88,19 @@ def enforce_tool_guardrail(agent_name: str, tool_name: str, tool_args: Dict[str,
                 logger.warning(f"Guardrail triggered: High-value payment release of ${amount} requires explicit approval.")
 
         if not auto_approve:
-            print(f"\n⚠️  [GUARDRAIL TRIGGERED] Agent '{agent_name}' requested execution of high-risk tool '{tool_name}'.")
-            print(f"   Parameters: {tool_args}")
-            try:
-                user_choice = input("   Do you authorize this tool execution? (y/N): ").strip().lower()
-                if user_choice != 'y':
-                    logger.warning(f"Human-in-the-loop: User rejected execution of tool '{tool_name}' by '{agent_name}'.")
-                    raise PermissionError(f"Guardrail Denied: High-risk tool '{tool_name}' execution was rejected by user supervisor.")
-            except EOFError:
-                # Non-interactive environment: allow execution with warning if standard input is closed
-                logger.warning(f"Non-interactive session detected. Proceeding with caution for tool '{tool_name}'.")
-                
+            with _approval_lock:
+                print(f"\n⚠️  [GUARDRAIL TRIGGERED] Agent '{agent_name}' requested execution of high-risk tool '{tool_name}'.")
+                print(f"   Parameters: {tool_args}")
+                try:
+                    user_choice = input("   Do you authorize this tool execution? (y/N): ").strip().lower()
+                except EOFError:
+                    # Non-interactive session (no stdin): nobody can approve, so fail closed.
+                    logger.warning(f"Non-interactive session: denying high-risk tool '{tool_name}' requested by '{agent_name}'.")
+                    raise PermissionError(f"Guardrail Denied: High-risk tool '{tool_name}' needs human approval, but no interactive session is available.")
+            if user_choice != 'y':
+                logger.warning(f"Human-in-the-loop: User rejected execution of tool '{tool_name}' by '{agent_name}'.")
+                raise PermissionError(f"Guardrail Denied: High-risk tool '{tool_name}' execution was rejected by user supervisor.")
+
     return True
 
 def sanitize_output(output_text: str) -> str:

@@ -10,12 +10,14 @@ from concurrent.futures import ThreadPoolExecutor
 from crewai import Agent, Task, Crew, Process
 from runtime.llm_router import get_llm
 from runtime.task_graph import resolve_execution_batches
-from memory.knowledge import KnowledgeMemory
+from memory.knowledge import KnowledgeMemory, KNOWLEDGE_COLLECTION_ID
 from monitoring.tracer import StepEvent, publish_step_event
 from dataclasses import dataclass, asdict, field
 from security.rbac import check_permission
 from security.guardrails import validate_and_sanitize_input, enforce_tool_guardrail, sanitize_output
 from utils.cost import count_tokens, calculate_step_cost
+from utils.config import load_settings
+from utils.logger import get_logger
 
 # Import Connectors mapping
 from connectors.jira import JiraConnector
@@ -65,7 +67,7 @@ def resolve_agent_tools(tool_names: List[str], crew_id: str, config_dir: str, ag
     for tool_str in tool_names:
         if tool_str == "knowledge.search":
             if not knowledge_memory:
-                knowledge_memory = KnowledgeMemory(crew_id=crew_id, config_dir=config_dir)
+                knowledge_memory = KnowledgeMemory(crew_id=KNOWLEDGE_COLLECTION_ID, config_dir=config_dir)
             resolved_tools.append(knowledge_memory.as_crewai_tool())
             continue
 

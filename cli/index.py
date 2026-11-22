@@ -4,7 +4,7 @@ from typing import Optional
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
-from memory.knowledge import KnowledgeMemory
+from memory.knowledge import KnowledgeMemory, KNOWLEDGE_COLLECTION_ID
 from utils.config import load_settings
 from utils.logger import get_logger
 
@@ -17,8 +17,8 @@ def index_source(config_dir: str = ".", source: Optional[str] = None, show_statu
     """
     console = Console()
     
-    # We namespace index tasks as 'global_rag'
-    knowledge = KnowledgeMemory(crew_id="global_rag", config_dir=config_dir)
+    # Index into the shared collection that knowledge.search reads from
+    knowledge = KnowledgeMemory(crew_id=KNOWLEDGE_COLLECTION_ID, config_dir=config_dir)
 
     if show_status:
         # Show indexing status manifest
@@ -80,7 +80,7 @@ def index_source(config_dir: str = ".", source: Optional[str] = None, show_statu
                     progress.update(task_id, completed=step * 20)
                 
                 # Perform the ingestion
-                single_source_knowledge = KnowledgeMemory(crew_id="global_rag", config_dir=config_dir)
+                single_source_knowledge = KnowledgeMemory(crew_id=KNOWLEDGE_COLLECTION_ID, config_dir=config_dir)
                 single_source_knowledge.settings.memory.knowledge.sources = [s]
                 # Force re-index if single source is called, otherwise standard incremental checks
                 res = single_source_knowledge.ingest_all(force=(source is not None))
